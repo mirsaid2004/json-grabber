@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5b6cff"/>
+      <stop offset="1" stop-color="#7b3fe4"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="24" fill="url(#bg)"/>
+  <!-- Braces only, heavier stroke: the arrow turns to mush below ~24px. -->
+  <g fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M56 26 C42 26 42 40 42 50 C42 58 34 60 30 64 C34 68 42 70 42 78 C42 88 42 102 56 102"/>
+    <path d="M72 26 C86 26 86 40 86 50 C86 58 94 60 98 64 C94 68 86 70 86 78 C86 88 86 102 72 102"/>
+  </g>
+</svg>

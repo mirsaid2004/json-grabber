@@ -1,0 +1,79 @@
+<!doctype html>
+<!--
+  Icon build page. dev/icon.svg is the source of truth; this page rasterizes it
+  to PNG at each size Chrome asks for. Not part of the extension.
+
+    python3 -m http.server 8777
+    open http://localhost:8777/dev/icon.html
+
+  Right-click a preview to save it, or call window.toPng(size) from the console.
+-->
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+      body { background: #202124; color: #ddd; font: 13px system-ui, sans-serif; padding: 24px; }
+      .row { display: flex; align-items: flex-end; gap: 28px; margin-bottom: 24px; }
+      figure { margin: 0; text-align: center; }
+      figcaption { margin-top: 8px; opacity: 0.7; }
+      .light { background: #fff; padding: 16px; border-radius: 8px; }
+    </style>
+  </head>
+  <body>
+    <div class="row" id="dark"></div>
+    <div class="row light" id="light"></div>
+
+    <script>
+      const SIZES = [128, 48, 32, 16];
+      /** Sizes at or below this use the simplified braces-only artwork. */
+      const SMALL_AT = 16;
+      const svg = { main: null, small: null };
+
+      async function load() {
+        svg.main = await fetch('./icon.svg').then((r) => r.text());
+        svg.small = await fetch('./icon-small.svg').then((r) => r.text());
+      }
+
+      function sourceFor(size) {
+        return size <= SMALL_AT ? svg.small : svg.main;
+      }
+
+      function draw(size) {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, size, size);
+            resolve(canvas);
+          };
+          img.onerror = reject;
+          img.src = 'data:image/svg+xml;base64,' + btoa(sourceFor(size));
+        });
+      }
+
+      /** Base64 PNG for one size — the export path used to write extension/icons. */
+      window.toPng = async function (size) {
+        const canvas = await draw(size);
+        return canvas.toDataURL('image/png').split(',')[1];
+      };
+
+      (async function preview() {
+        await load();
+        for (const parent of ['dark', 'light']) {
+          for (const size of SIZES) {
+            const canvas = await draw(size);
+            const figure = document.createElement('figure');
+            figure.append(canvas, Object.assign(document.createElement('figcaption'), {
+              textContent: size + 'px'
+            }));
+            document.getElementById(parent).append(figure);
+          }
+        }
+        window.__ready = true;
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,431 @@
+:root {
+  color-scheme: light dark;
+  --border: rgba(128, 128, 128, 0.35);
+  --hover: rgba(128, 128, 128, 0.12);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+
+/* Filter + Clear travel together and absorb the slack. */
+.toolbar-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.toolbar-filter input[type="text"] {
+  flex: 1 1 auto;
+  min-width: 60px;
+  max-width: 340px;
+  padding: 3px 6px;
+  font: inherit;
+}
+
+/* Everything else; wraps to its own row when the panel gets narrow. */
+.toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: 0 1 auto;
+  margin-left: auto;
+}
+
+/* Controls keep their intrinsic width — shrinking them is what caused the
+   overlapping, clipped labels. */
+.toolbar button,
+.toolbar select {
+  font: inherit;
+  padding: 3px 8px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.counter {
+  flex: 0 0 auto;
+  text-align: right;
+  white-space: nowrap;
+  opacity: 0.8;
+}
+
+main {
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+th, td {
+  text-align: left;
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: Canvas;
+  font-weight: 600;
+}
+
+.col-status { width: 70px; }
+.col-size { width: 90px; }
+
+tr.row { cursor: pointer; }
+tr.row:hover td { background: var(--hover); }
+tr.row.open td { font-weight: 600; }
+
+td.status-err { color: #c62828; }
+
+tr.detail > td {
+  white-space: normal;
+  padding: 0;
+}
+
+tr.detail pre {
+  margin: 0;
+  padding: 8px 12px;
+  max-height: 420px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--hover);
+}
+
+tr.detail .full-url {
+  padding: 6px 12px 0;
+  opacity: 0.75;
+  word-break: break-all;
+}
+
+.empty {
+  padding: 12px;
+  opacity: 0.6;
+}
+
+footer {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--border);
+}
+
+.log-header {
+  padding: 3px 8px;
+  opacity: 0.7;
+  border-bottom: 1px solid var(--border);
+}
+
+.log {
+  margin: 0;
+  padding: 4px 8px;
+  height: 72px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.toolbar button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.col-check { width: 28px; }
+.col-save { width: 62px; }
+
+td.cell-check,
+td.cell-save {
+  padding: 2px 6px;
+  overflow: visible;
+}
+
+td.cell-check input {
+  margin: 0;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+td.cell-save { text-align: right; }
+
+button.save {
+  font: inherit;
+  font-size: 11px;
+  padding: 1px 7px;
+  cursor: pointer;
+}
+
+/* ---- workspace: capture list + optional composer ---- */
+
+.workspace {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.primary {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  /* The usable width depends on the composer, not the window, so the panel
+     responds to its own container rather than a media query. */
+  container-type: inline-size;
+  container-name: primary;
+}
+
+/* Deliberately not `.primary` — that class names the layout column, and
+   inheriting its container-type would collapse the button to its padding. */
+.compose-btn {
+  font-weight: 600;
+}
+
+.row[draggable="true"] { cursor: grab; }
+.row[draggable="true"]:active { cursor: grabbing; }
+
+/* ---- composer side panel ---- */
+
+.composer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  min-width: 0;
+  border-left: 1px solid var(--border);
+  container-type: inline-size;
+  container-name: composer;
+}
+
+.resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 2;
+}
+
+.resize-handle:hover { background: var(--hover); }
+
+.composer-head,
+.composer-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  flex: 0 0 auto;
+}
+
+.composer-head .spacer,
+.composer-foot .spacer {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.composer-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-head { border-bottom: 1px solid var(--border); }
+.composer-foot { border-top: 1px solid var(--border); }
+
+.composer-head button,
+.composer-foot button {
+  font: inherit;
+  padding: 3px 8px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.composer button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+button.icon {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+button.icon:hover { opacity: 1; }
+
+.segmented {
+  display: flex;
+}
+
+.segmented button {
+  border: 1px solid var(--border);
+  background: none;
+  cursor: pointer;
+}
+
+.segmented button:first-child { border-radius: 3px 0 0 3px; }
+.segmented button:last-child { border-radius: 0 3px 3px 0; border-left: none; }
+.segmented button.active { background: var(--hover); font-weight: 600; }
+
+/* ---- drop target ---- */
+
+.dropzone {
+  flex: 0 1 auto;
+  overflow: auto;
+  min-height: 84px;
+  max-height: 45%;
+  padding: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dropzone.over {
+  outline: 2px dashed currentColor;
+  outline-offset: -4px;
+  background: var(--hover);
+}
+
+.dropzone .empty { padding: 18px 8px; text-align: center; }
+
+.compose-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.compose-items li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.compose-items li:last-child { border-bottom: none; }
+
+.compose-items .key {
+  font: inherit;
+  width: 120px;
+  flex: 0 0 auto;
+  padding: 2px 4px;
+}
+
+.compose-items .index {
+  flex: 0 0 auto;
+  width: 22px;
+  text-align: right;
+  opacity: 0.6;
+}
+
+.compose-items .src {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+.compose-items .warn {
+  flex: 0 0 auto;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--hover);
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+/* ---- preview ---- */
+
+.composer-preview {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.composer-preview pre {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 6px 8px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ---- responsive: capture list ---- */
+
+@container primary (max-width: 560px) {
+  /* Filter keeps the top row to itself; actions drop to a row underneath. */
+  .toolbar-filter { flex: 1 1 100%; }
+  .toolbar-filter input[type="text"] { max-width: none; }
+  .toolbar-actions {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+}
+
+@container primary (max-width: 440px) {
+  .col-size,
+  .cell-size { display: none; }
+}
+
+@container primary (max-width: 320px) {
+  .col-status,
+  .cell-status { display: none; }
+  .toolbar-actions { justify-content: flex-start; }
+}
+
+/* ---- responsive: composer ---- */
+
+@container composer (max-width: 340px) {
+  .seg-label { display: none; }
+}
+
+@container composer (max-width: 300px) {
+  /* Give the source URL room once the panel is tight. */
+  .compose-items .key { width: 84px; }
+}
+
+@container composer (max-width: 260px) {
+  .composer-title { display: none; }
+  .compose-items .key { width: 68px; }
+}

@@ -1,0 +1,71 @@
+<!doctype html>
+<!--
+  Layout harness. Loads the real built panel in an ordinary tab with a stubbed
+  chrome.devtools API and fake captures, so panel CSS can be iterated on without
+  reloading the extension. Not part of the extension.
+
+    npx http-server  (or: python3 -m http.server 8777)
+    open http://localhost:8777/dev/harness.html?w=520
+
+  ?w= sets the panel width so container queries can be checked.
+-->
+<html>
+  <head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="../extension/panel.css">
+    <style>
+      body { margin: 0; padding: 12px; background: #222; }
+      #frame {
+        height: 460px;
+        margin: 0 auto;
+        outline: 1px solid #555;
+        background: Canvas;
+        resize: horizontal;
+        overflow: hidden;
+      }
+      #root { height: 100%; }
+    </style>
+  </head>
+  <body>
+    <div id="frame"><div id="root"></div></div>
+
+    <script>
+      const params = new URLSearchParams(location.search);
+      document.getElementById('frame').style.width = (params.get('w') || '900') + 'px';
+
+      let fire = null;
+      window.chrome = {
+        devtools: {
+          network: {
+            onRequestFinished: {
+              addListener(fn) { fire = fn; },
+              removeListener() { fire = null; }
+            }
+          }
+        }
+      };
+    </script>
+    <script src="../extension/panel.js"></script>
+    <script>
+      const FIXTURES = [
+        ['https://mswjs.io/manifest.json', 200,
+          { name: 'Mock Service Worker', icons: [{ src: '/icon-192.png', type: 'image/png', sizes: '192x192' }] }],
+        ['https://api.example.com/v1/users?page=2', 200,
+          { users: [{ id: 1, name: 'ada' }, { id: 2, name: 'grace' }] }],
+        ['https://api.example.com/v1/orders/77', 200, [{ order: 77, total: 12.5 }]],
+        ['https://api.example.com/v1/inventory/status', 500, { error: 'upstream timeout' }]
+      ];
+
+      (function seed() {
+        if (!fire) return setTimeout(seed, 20);
+        for (const [url, status, body] of FIXTURES) {
+          fire({
+            request: { url },
+            response: { status, content: { mimeType: 'application/json' } },
+            getContent(cb) { cb(JSON.stringify(body), ''); }
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>
