@@ -4,8 +4,8 @@
   "private": true,
   "description": "Local DevTools extension that captures JSON response bodies.",
   "scripts": {
-    "build": "esbuild src/panel.tsx --bundle --format=iife --jsx=automatic --target=chrome120 --outfile=extension/panel.js",
-    "watch": "npm run build -- --watch",
+    "build": "esbuild src/panel.tsx --bundle --format=iife --jsx=automatic --target=chrome120 --minify --define:process.env.NODE_ENV=\\\"production\\\" --outfile=extension/panel.js",
+  "watch": "esbuild src/panel.tsx --bundle --format=iife --jsx=automatic --target=chrome120 --outfile=extension/panel.js --watch",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
