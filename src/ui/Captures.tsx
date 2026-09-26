@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef } from 'react';
 import type { CaptureMeta } from '../capture/types';
 import { captureStore } from '../store/captureStore';
 import { downloadBundle, downloadEach } from './download';
@@ -47,11 +48,27 @@ export function Captures(props: CapturesProps) {
     }
   }
 
-  /** Dragging a selected row carries the whole selection; otherwise just that row. */
-  function onDragStart(event: React.DragEvent, id: string): void {
-    const ids = selected.has(id) ? captures.filter((m) => selected.has(m.id)).map((m) => m.id) : [id];
+  // Read by onDragStart at drag time. Updated in an effect (not during render,
+  // which StrictMode and concurrent rendering can discard); a drag always
+  // starts well after the commit that set it.
+  const selectedRef = useRef(selected);
+  useEffect(() => {
+    selectedRef.current = selected;
+  }, [selected]);
+
+  /**
+   * Dragging a selected row carries the whole selection, in table order;
+   * otherwise just that row. Never changes identity, so memoised rows re-render
+   * only when their own props do: it reads the selection through a ref and the
+   * list from the store, instead of closing over `selected` and `captures`.
+   */
+  const onDragStart = useCallback((event: React.DragEvent, id: string) => {
+    const current = selectedRef.current;
+    const ids = current.has(id)
+      ? captureStore.getSnapshot().filter((m) => current.has(m.id)).map((m) => m.id)
+      : [id];
     setDragIds(event.dataTransfer, ids);
-  }
+  }, []);
 
   return (
     <>

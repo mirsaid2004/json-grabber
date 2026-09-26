@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { captureStore } from '../store/captureStore';
 import type { CaptureMeta } from '../capture/types';
 import { formatSize } from '../engine/bytes';
@@ -15,7 +15,12 @@ interface RowProps {
   onDragStart(event: React.DragEvent, id: string): void;
 }
 
-export function Row({ meta, checked, onToggle, onDragStart }: RowProps) {
+/**
+ * Memoised: a new capture must not re-render every existing row. Props are
+ * cheap to compare — `meta` objects are immutable per id, and the callbacks
+ * come in stable (`useCallback`) from Captures and Panel.
+ */
+export const Row = memo(function Row({ meta, checked, onToggle, onDragStart }: RowProps) {
   const [open, setOpen] = useState(false);
 
   // Body is pulled from the store only once the row is expanded, so large
@@ -71,4 +76,4 @@ export function Row({ meta, checked, onToggle, onDragStart }: RowProps) {
       )}
     </>
   );
-}
+});

@@ -107,6 +107,11 @@ closures over local state, never `this`, because they are passed unbound to
   snapshotted. A body is pulled on demand (`getBody(id)`) when a row expands or an export
   runs. Do not put bodies into props or state.
 
+`Row` is wrapped in `React.memo`, so a new capture renders only the new row. That holds
+only while every prop stays referentially stable: callbacks passed to `Row` must be
+`useCallback`s that don't close over `captures` or `selected` (read those through the store
+or a ref at call time, as `Captures.onDragStart` does).
+
 `getServerSnapshot` is passed as the third argument at both call sites (`Panel.tsx`,
 `LogView.tsx`) so the tree can render headlessly via `react-dom/server`. Keep passing it.
 
