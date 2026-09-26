@@ -82,10 +82,12 @@ There are three ways to get captures out. All of them write
 
 **Export** — one button that follows the selection. With nothing ticked it
 reads **Export all**; tick some rows and it becomes **Export selected (3)** and
-acts on just those. The dropdown next to it picks the format either way:
+acts on just those. It is a split button: clicking the label exports as a
+single JSON file; the attached **▾** opens a menu with both formats:
 
-- **Single JSON** — one `.json` file containing an array of the capture objects
-- **Separate files** — one `.json` file per capture, named
+- **As single JSON file** (the default) — one `.json` file containing an array
+  of the capture objects
+- **As separate files** — one `.json` file per capture, named
   `NNN-<sanitized-url-slug>.json` (the index prefix prevents collisions)
 
 **Save** — the small button at the right of each row immediately downloads just
@@ -99,7 +101,7 @@ the row.
 **Clear** empties the store, the list, and the selection.
 
 Chrome may show a "Download multiple files?" prompt the first time you use
-**Separate files** on a site — allow it. Multi-file downloads are staggered by
+**As separate files** on a site — allow it. Multi-file downloads are staggered by
 150 ms because Chrome drops rapid-fire programmatic download clicks.
 
 ## Composer

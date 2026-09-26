@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import type { CaptureMeta } from '../capture/types';
 import { captureStore } from '../store/captureStore';
 import { downloadBundle, downloadEach } from './download';
+import { ExportButton, type ExportFormat } from './ExportButton';
 import { setDragIds } from './dnd';
 import { logStore } from '../store/logStore';
 import { Row } from './Row';
@@ -16,11 +16,8 @@ interface CapturesProps {
   onCompose(ids: string[]): void;
 }
 
-type Format = 'single' | 'separate';
-
 export function Captures(props: CapturesProps) {
   const { captures, filter, onFilterChange, selected, onToggle, onClearSelection } = props;
-  const [format, setFormat] = useState<Format>('single');
 
   // One export button: it acts on the selection when there is one, else on everything.
   const target = selected.size ? captures.filter((meta) => selected.has(meta.id)) : captures;
@@ -32,7 +29,7 @@ export function Captures(props: CapturesProps) {
     logStore.add('cleared');
   }
 
-  function exportTarget(): void {
+  function exportTarget(format: ExportFormat): void {
     if (!target.length) {
       logStore.add('nothing to export');
       return;
@@ -83,17 +80,7 @@ export function Captures(props: CapturesProps) {
               Compose ({selected.size})
             </button>
           )}
-          <select
-            value={format}
-            title="Export format"
-            onChange={(e) => setFormat(e.target.value as Format)}
-          >
-            <option value="single">Single JSON</option>
-            <option value="separate">Separate files</option>
-          </select>
-          <button type="button" onClick={exportTarget} title={exportLabel}>
-            {exportLabel}
-          </button>
+          <ExportButton label={exportLabel} onExport={exportTarget} />
           <span className="counter" title={captures.length + ' captured'}>
             {captures.length} captured
           </span>
