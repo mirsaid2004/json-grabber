@@ -8,7 +8,12 @@ const STICK_THRESHOLD = 8;
 export function LogView() {
   const lines = useSyncExternalStore(logStore.subscribe, logStore.getSnapshot, logStore.getSnapshot);
 
-  const { size:{height}, startResize } = useResize({ initialHeight: 72, minHeight: 72 });
+  const { size: { height }, startResize } = useResize({
+    initialHeight: 72,
+    minHeight: 72,
+    // Keep the toolbar and some of the capture table visible above the log.
+    maxHeight: () => window.innerHeight - 200
+  });
 
   const log = useRef<HTMLPreElement>(null);
   const atBottom = useRef(true);

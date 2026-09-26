@@ -37,6 +37,11 @@ interface ComposerProps {
 }
 
 const INITIAL_WIDTH = 420;
+/** Preview + footer block. The footer alone is ~40px, so this leaves room for the editor. */
+const INITIAL_PREVIEW_HEIGHT = 220;
+const MIN_PREVIEW_HEIGHT = 110;
+/** Kept for the composer head and drop zone when the preview is dragged taller. */
+const RESERVED_ABOVE_PREVIEW = 110;
 
 export function Composer(props: ComposerProps) {
   const { items, mode } = props;
@@ -47,8 +52,19 @@ export function Composer(props: ComposerProps) {
     captureStore.getVersion
   );
 
-  const { size:{width}, startResize: startResizeColumn } = useResize({ initialWidth: INITIAL_WIDTH });
-  const { size:{height}, startResize: startResizeRow } = useResize({ initialHeight: 72, minHeight: 72 });
+  const aside = useRef<HTMLElement>(null);
+  const { size: { width }, startResize: startResizeColumn } = useResize({
+    initialWidth: INITIAL_WIDTH,
+    minWidth: 260,
+    maxWidth: () => window.innerWidth - 200
+  });
+  const { size: { height }, startResize: startResizeRow } = useResize({
+    initialHeight: INITIAL_PREVIEW_HEIGHT,
+    minHeight: MIN_PREVIEW_HEIGHT,
+    // Relative to the composer, not the window: inside DevTools the window is
+    // only as tall as the panel.
+    maxHeight: () => (aside.current?.clientHeight ?? 0) - RESERVED_ABOVE_PREVIEW
+  });
 
   const [over, setOver] = useState(false);
   const dragDepth = useRef(0);
@@ -113,7 +129,7 @@ export function Composer(props: ComposerProps) {
   }
 
   return (
-    <aside className="composer" style={{ width: width + 'px' }}>
+    <aside className="composer" ref={aside} style={{ width: width + 'px' }}>
       <div className="resize-handle resize-handle-col" onPointerDown={startResizeColumn} title="Drag to resize" />
 
       <div className="composer-head">
@@ -198,37 +214,33 @@ export function Composer(props: ComposerProps) {
           </ol>
         )}
       </div>
-        <div className="composer-wrapper" 
-          style={{ height: height + 'px' }}
-        >
-
-          <div className="resize-handle resize-handle-row" onPointerDown={startResizeRow} title="Drag to resize" />
-      <div className="composer-preview" 
-      >
-        <div className="log-header">Preview</div>
-        {preview.kind === 'text' && <JsonView value={preview.text} />}
-        {preview.kind === 'suppressed' && (
-          <p className="empty">
-            Preview skipped: {formatSize(preview.bytes)} of input. Export and Copy still build the
-            whole document.
-          </p>
-        )}
-        {preview.kind === 'error' && <p className="empty">Could not build preview: {preview.message}</p>}
-      </div>
-
-      <div className="composer-foot">
-        <button type="button" onClick={props.onClearItems} disabled={!items.length}>
-          Clear
-        </button>
-        <span className="spacer" />
-        <button type="button" onClick={copyComposition} disabled={!items.length}>
-          Copy
-        </button>
-        <button type="button" onClick={exportComposition} disabled={!items.length}>
-          Export
-        </button>
-      </div>
+      <div className="composer-wrapper" style={{ height: height + 'px' }}>
+        <div className="resize-handle resize-handle-row" onPointerDown={startResizeRow} title="Drag to resize" />
+        <div className="composer-preview">
+          <div className="log-header">Preview</div>
+          {preview.kind === 'text' && <JsonView value={preview.text} />}
+          {preview.kind === 'suppressed' && (
+            <p className="empty">
+              Preview skipped: {formatSize(preview.bytes)} of input. Export and Copy still build the
+              whole document.
+            </p>
+          )}
+          {preview.kind === 'error' && <p className="empty">Could not build preview: {preview.message}</p>}
         </div>
+
+        <div className="composer-foot">
+          <button type="button" onClick={props.onClearItems} disabled={!items.length}>
+            Clear
+          </button>
+          <span className="spacer" />
+          <button type="button" onClick={copyComposition} disabled={!items.length}>
+            Copy
+          </button>
+          <button type="button" onClick={exportComposition} disabled={!items.length}>
+            Export
+          </button>
+        </div>
+      </div>
     </aside>
   );
 }

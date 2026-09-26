@@ -170,6 +170,13 @@ preview past `PREVIEW_MAX_INPUT` and builds the output on demand for Export / Co
 Panel width depends on the composer, not the window, so `extension/panel.css` uses
 **container queries** (`container-type: inline-size`), not media queries.
 
+**Resizing** goes through `src/hooks/useResize.tsx` (React, so it sits with `ui/`). Give
+it bounds relative to the layout — a function read at drag start, e.g. the composer's own
+height — not `window.innerWidth/innerHeight`: inside DevTools the window is only as big as
+the panel. A resizable block must be a flex column whose scrolling child has
+`flex: 1; min-height: 0`, or CodeMirror grows to the full document height and pushes
+anything below it out of reach.
+
 **Sticky inside the table** (verified in Chrome, the hard way): a sticky `<td>` *and* a sticky
 `<tr>` are both bounded by the whole table, not their row or `<tbody>` — an open row made
 sticky stays pinned over unrelated rows until the table ends. So an **open** row renders as
