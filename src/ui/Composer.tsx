@@ -1,13 +1,28 @@
 import { useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { captureStore } from '../store/captureStore';
+import { formatSize } from '../engine/bytes';
 import { compose, type ComposeItem, type ComposeMode } from '../engine/compose';
 import { safeParse } from '../engine/json';
 import { shortUrl } from '../engine/url';
 import { download } from './download';
 import { getDragIds, hasDragIds } from './dnd';
+import { JsonView } from './editor/JsonView';
 import { logStore } from '../store/logStore';
 
-const PREVIEW_LIMIT = 200_000;
+/**
+ * The viewer renders only visible lines, so output length is not a problem —
+ * but building the output is a full JSON.parse + stringify of every body. Past
+ * this much input the preview is skipped, and Export / Copy build it on demand.
+ */
+const PREVIEW_MAX_INPUT = 20 * 1024 * 1024;
+
+/** The composed document as text. Throws if it cannot be built. */
+function buildOutput(items: ComposeItem[], mode: ComposeMode): string {
+  const sources = items.map((item) => ({ key: item.key, body: captureStore.getBody(item.id) }));
+  return JSON.stringify(compose(sources, mode), null, 2);
+}
+
+type Preview = { kind: 'text'; text: string } | { kind: 'suppressed'; bytes: number } | { kind: 'error'; message: string };
 
 interface ComposerProps {
   items: ComposeItem[];
@@ -45,16 +60,21 @@ export function Composer(props: ComposerProps) {
     [items, version]
   );
 
-  const output = useMemo(() => {
-    const sources = items.map((item) => ({ key: item.key, body: captureStore.getBody(item.id) }));
-    try {
-      return JSON.stringify(compose(sources, mode), null, 2);
-    } catch (e) {
-      return '// could not build preview: ' + (e instanceof Error ? e.message : String(e));
-    }
-  }, [items, mode, version]);
+  const inputBytes = rows.reduce((sum, row) => sum + (row.meta ? row.meta.size : 0), 0);
 
-  const truncated = output.length > PREVIEW_LIMIT;
+  const preview = useMemo((): Preview => {
+    if (inputBytes > PREVIEW_MAX_INPUT) return { kind: 'suppressed', bytes: inputBytes };
+    try {
+      return { kind: 'text', text: buildOutput(items, mode) };
+    } catch (e) {
+      return { kind: 'error', message: e instanceof Error ? e.message : String(e) };
+    }
+  }, [items, mode, version, inputBytes]);
+
+  /** The full document for Export / Copy: the preview's text when it has one. */
+  function fullOutput(): string {
+    return preview.kind === 'text' ? preview.text : buildOutput(items, mode);
+  }
 
   function onDrop(event: React.DragEvent): void {
     event.preventDefault();
@@ -68,7 +88,7 @@ export function Composer(props: ComposerProps) {
     if (!items.length) return;
     try {
       const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-      download('composed-' + stamp + '.json', output);
+      download('composed-' + stamp + '.json', fullOutput());
       logStore.add('exported composition of ' + items.length + ' capture(s)');
     } catch (e) {
       logStore.add('export failed: ' + (e instanceof Error ? e.message : String(e)));
@@ -76,7 +96,14 @@ export function Composer(props: ComposerProps) {
   }
 
   function copyComposition(): void {
-    navigator.clipboard.writeText(output).then(
+    let text: string;
+    try {
+      text = fullOutput();
+    } catch (e) {
+      logStore.add('copy failed: ' + (e instanceof Error ? e.message : String(e)));
+      return;
+    }
+    navigator.clipboard.writeText(text).then(
       () => logStore.add('composition copied to clipboard'),
       (e: unknown) => logStore.add('copy failed: ' + (e instanceof Error ? e.message : String(e)))
     );
@@ -188,10 +215,15 @@ export function Composer(props: ComposerProps) {
       </div>
 
       <div className="composer-preview">
-        <div className="log-header">
-          Preview{truncated ? ' (truncated for display; export writes the whole document)' : ''}
-        </div>
-        <pre>{truncated ? output.slice(0, PREVIEW_LIMIT) + '\n…' : output}</pre>
+        <div className="log-header">Preview</div>
+        {preview.kind === 'text' && <JsonView value={preview.text} />}
+        {preview.kind === 'suppressed' && (
+          <p className="empty">
+            Preview skipped: {formatSize(preview.bytes)} of input. Export and Copy still build the
+            whole document.
+          </p>
+        )}
+        {preview.kind === 'error' && <p className="empty">Could not build preview: {preview.message}</p>}
       </div>
 
       <div className="composer-foot">

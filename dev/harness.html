@@ -4,7 +4,10 @@
   chrome.devtools API and fake captures, so panel CSS can be iterated on without
   reloading the extension. Not part of the extension.
 
-    npx http-server  (or: python3 -m http.server 8777)
+    npm run dev      (rebuild on save + serve + open + live reload)
+
+  or, with any static server from the repo root after `npm run build`:
+    python3 -m http.server 8777
     open http://localhost:8777/dev/harness.html?w=520
 
   ?w= sets the panel width so container queries can be checked.
@@ -30,6 +33,12 @@
     <div id="frame"><div id="root"></div></div>
 
     <script>
+      // Live reload when served by `npm run dev` (esbuild). Any other server has
+      // no /esbuild stream, so the error handler closes it instead of retrying.
+      const live = new EventSource('/esbuild');
+      live.addEventListener('change', () => location.reload());
+      live.onerror = () => live.close();
+
       const params = new URLSearchParams(location.search);
       document.getElementById('frame').style.width = (params.get('w') || '900') + 'px';
 
@@ -53,7 +62,14 @@
         ['https://api.example.com/v1/users?page=2', 200,
           { users: [{ id: 1, name: 'ada' }, { id: 2, name: 'grace' }] }],
         ['https://api.example.com/v1/orders/77', 200, [{ order: 77, total: 12.5 }]],
-        ['https://api.example.com/v1/inventory/status', 500, { error: 'upstream timeout' }]
+        ['https://api.example.com/v1/inventory/status', 500, { error: 'upstream timeout' }],
+        // Large on purpose (~40k formatted lines): checks the viewer has no size cap.
+        ['https://api.example.com/v1/catalog?all=true', 200, {
+          items: Array.from({ length: 4000 }, (_, i) => ({
+            id: i, sku: 'SKU-' + i, active: i % 3 !== 0, price: +(i * 1.37).toFixed(2), note: null,
+            tags: ['a', 'b'], dims: { w: i % 50, h: i % 30 }
+          }))
+        }]
       ];
 
       (function seed() {

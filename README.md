@@ -245,6 +245,9 @@ src/
     Row.tsx           one row: checkbox, drag source, expand, Save
     Composer.tsx      resizable side panel: drop target, wrapper, preview
     LogView.tsx       panel log footer
+    editor/
+      JsonView.tsx    read-only JSON viewer (CodeMirror 6): highlight, fold, search
+      theme.ts        editor look; colors are CSS variables in panel.css
     download.ts       Blob-anchor download helpers
     dnd.ts            drag-and-drop payload helpers
 dev/

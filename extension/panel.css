@@ -2,6 +2,28 @@
   color-scheme: light dark;
   --border: rgba(128, 128, 128, 0.35);
   --hover: rgba(128, 128, 128, 0.12);
+
+  /* JSON viewer (src/ui/editor/theme.ts). Palette follows Chrome DevTools' own
+     JSON colors so values read the same as in the Network > Preview tab. */
+  --editor-bg: rgba(128, 128, 128, 0.06);
+  --editor-gutter: rgba(128, 128, 128, 0.8);
+  --editor-match: rgba(64, 128, 255, 0.18);
+  --editor-search: rgba(255, 200, 0, 0.3);
+  --editor-search-current: rgba(255, 150, 0, 0.55);
+  --json-key: #881280;
+  --json-string: #c41a16;
+  --json-number: #1c00cf;
+  --json-literal: #0d22aa;
+  --json-punct: rgba(128, 128, 128, 0.95);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --json-key: #5db0d7;
+    --json-string: #f29766;
+    --json-number: #9980ff;
+    --json-literal: #cf8dfb;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -117,14 +139,10 @@ tr.detail > td {
   padding: 0;
 }
 
-tr.detail pre {
-  margin: 0;
-  padding: 8px 12px;
+/* The editor scrolls itself (it only renders visible lines), so it needs a
+   bounded height rather than growing the table row. */
+tr.detail .json-view .cm-editor {
   max-height: 420px;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
-  background: var(--hover);
 }
 
 tr.detail .full-url {
@@ -382,13 +400,13 @@ button.icon:hover { opacity: 1; }
   min-height: 0;
 }
 
-.composer-preview pre {
+.composer-preview .json-view {
   flex: 1 1 auto;
-  margin: 0;
-  padding: 6px 8px;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
+  min-height: 0;
+}
+
+.composer-preview .json-view .cm-editor {
+  height: 100%;
 }
 
 /* ---- responsive: capture list ---- */

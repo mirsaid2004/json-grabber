@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { captureStore } from '../store/captureStore';
 import type { CaptureMeta } from '../capture/types';
 import { formatSize } from '../engine/bytes';
 import { prettyPrint } from '../engine/json';
 import { shortUrl } from '../engine/url';
 import { downloadCapture } from './download';
+import { JsonView } from './editor/JsonView';
 import { logStore } from '../store/logStore';
 
 interface RowProps {
@@ -18,8 +19,9 @@ export function Row({ meta, checked, onToggle, onDragStart }: RowProps) {
   const [open, setOpen] = useState(false);
 
   // Body is pulled from the store only once the row is expanded, so large
-  // bodies never sit in React state.
-  const body = open ? prettyPrint(captureStore.getBody(meta.id)) : '';
+  // bodies never sit in React state. Memoised: bodies are write-once, so the
+  // id alone decides the text, and other captures arriving must not re-format it.
+  const body = useMemo(() => (open ? prettyPrint(captureStore.getBody(meta.id)) : ''), [open, meta.id]);
 
   function save(event: React.MouseEvent): void {
     event.stopPropagation(); // don't toggle expand/collapse
@@ -63,7 +65,7 @@ export function Row({ meta, checked, onToggle, onDragStart }: RowProps) {
             <div className="full-url">
               {meta.url} &middot; {meta.mimeType || 'unknown'} &middot; {meta.timestamp}
             </div>
-            <pre>{body}</pre>
+            <JsonView value={body} />
           </td>
         </tr>
       )}

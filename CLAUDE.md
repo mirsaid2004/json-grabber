@@ -14,13 +14,22 @@ exports them as files. React + TypeScript, bundled by esbuild.
 npm install
 npm run build       # esbuild: src/panel.tsx -> extension/panel.js (IIFE, target chrome120)
 npm run watch       # same, --watch
-npm run typecheck   # tsc --noEmit
+npm run dev         # watch + serve + open the harness, live reload (dev/dev.mjs)
+npm run typecheck   # tsc -b: app + tests, each under its own config
+npm test            # jest
 ```
 
-**There is no test runner and no `test` script.** `engine/` is pure and browser-free by
-design, so adding one needs no new dependencies — Node's built-in runner plus type
-stripping (`node --experimental-strip-types --test 'src/**/*.test.ts'`). See
-`codebase-review.md` §7 before proposing anything heavier.
+Tests are Jest + `ts-jest`, configured under `"jest"` in `package.json`. Test files are
+`src/**/*.test.ts`.
+
+TypeScript config is **solution-style**: `tsconfig.json` has no files of its own, only
+`references` to `tsconfig.app.json` (panel code, `types: ["chrome"]`, tests excluded) and
+`tsconfig.test.json` (tests only, `types: ["jest"]`, CommonJS for ts-jest). This is what
+lets VS Code apply the right config per file — the editor only discovers files named
+exactly `tsconfig.json`, so a test file excluded from it with no reference gets default
+settings and no Jest types. It also keeps Jest globals out of panel code. Put new compiler
+options in `tsconfig.app.json`; the test config extends it. Keep `engine/` and
+`store/` free of browser APIs so they stay testable in Jest's `node` environment.
 
 ### Iterating on the panel
 
@@ -28,10 +37,16 @@ Reloading the extension for every change is slow. `dev/harness.html` mounts the 
 built bundle** in an ordinary tab with a stubbed `chrome.devtools` API and fake captures:
 
 ```bash
-npm run build
-python3 -m http.server 8777
-open http://localhost:8777/dev/harness.html?w=560   # ?w= sets panel width
+npm run dev                      # rebuild on save, serve, open harness, live reload
+npm run dev -- --w=560 --port=8777 --no-open   # ?w= sets panel width
 ```
+
+`dev/dev.mjs` uses esbuild's own `serve` + `watch`; the harness subscribes to its
+`/esbuild` event stream and reloads on change (and closes the stream under any other static
+server, so `python3 -m http.server` still works after `npm run build`). esbuild only emits a
+change event when the **output** differs — `touch` on a source file does not reload. The
+build is also written to disk, so a loaded unpacked extension gets it too after DevTools is
+reopened. It is a development build: run `npm run build` before packaging.
 
 Use this for anything layout- or UI-shaped. Only fall back to loading the extension when
 the change touches the real network listener.
@@ -51,13 +66,14 @@ Dependencies point one way only. This is the load-bearing rule of the codebase:
 ```
 engine/   pure logic — no browser, no React, no chrome APIs
    ^
-capture/  chrome.devtools listener + in-memory store — no React
+capture/  chrome.devtools listener + the Capture types — no React
+store/    in-memory capture and log stores — no React, no chrome APIs
    ^
 ui/       React components
 ```
 
-New logic goes in `engine/` where it is testable without a browser. `capture/` is the
-layer that must keep working when the UI is rewritten.
+New logic goes in `engine/` where it is testable without a browser. `capture/` and
+`store/` are the layers that must keep working when the UI is rewritten.
 
 ### The two data shapes
 
@@ -71,12 +87,22 @@ layer that must keep working when the UI is rewritten.
 
 ### The store contract
 
-`capture/store.ts` is a framework-free module singleton read through
-`useSyncExternalStore`. Two invariants:
+`store/captureStore.ts` exports `createCaptureStore()` — a factory, so every test builds an
+isolated instance — plus the one shared `captureStore` the panel uses. Methods are
+closures over local state, never `this`, because they are passed unbound to
+`useSyncExternalStore`. Invariants:
 
-- `getSnapshot()` must return a **stable reference between mutations**. Any change to the
-  meta array must produce a new array; any non-mutating call must return the same one.
-  Returning a fresh array unconditionally causes an infinite render loop.
+- `getSnapshot()` must return a **stable reference between mutations**. Mutations push
+  into a private array and set a dirty flag; `getSnapshot()` re-slices only when dirty.
+  Returning a fresh array unconditionally causes an infinite render loop. Snapshots are
+  `readonly` and frozen outside production builds, so an in-place `sort()` by a consumer
+  throws instead of silently desyncing the UI.
+- Listener notification is **coalesced onto a microtask**: captures arriving in one tick
+  cause one render. Tests must `await` a microtask before counting notifications.
+- `getVersion()` changes whenever any data does. Memos that read bodies or meta through
+  the store (`Composer.tsx`) depend on it, not on the capture array.
+- The store is **capped** (`DEFAULT_CAPTURE_LIMIT`); the oldest capture's body is
+  deleted and the drop is logged via `onEvict`.
 - **Bodies live in a `Map`, outside React state.** Only the small meta array is
   snapshotted. A body is pulled on demand (`getBody(id)`) when a row expands or an export
   runs. Do not put bodies into props or state.
@@ -84,7 +110,8 @@ layer that must keep working when the UI is rewritten.
 `getServerSnapshot` is passed as the third argument at both call sites (`Panel.tsx`,
 `LogView.tsx`) so the tree can render headlessly via `react-dom/server`. Keep passing it.
 
-`ui/logStore.ts` mirrors the same subscribe/getSnapshot shape for the footer log.
+`store/logStore.ts` is built the same way (`createLogStore()` + shared `logStore`) for the
+footer log. It notifies synchronously.
 
 ### Composer
 
@@ -108,6 +135,27 @@ calling `getData()`. Do not "simplify" this.
 If you add reorder-within-composer, it needs a **second, distinct MIME type** — otherwise
 the drop handler cannot tell "reorder" from "add" and will append duplicates. See
 `codebase-review.md` §4.3 for the dnd-kit tradeoff analysis before reaching for a library.
+
+### JSON viewer
+
+`ui/editor/JsonView.tsx` wraps CodeMirror 6 and is used for the row detail and the
+composer preview. It renders only visible lines, so **there is no display size cap** —
+the cost that remains is *building* the string, which is why the composer skips its
+preview past `PREVIEW_MAX_INPUT` and builds the output on demand for Export / Copy.
+
+- The `EditorView` is created **once per mount**; a changed `value` is swapped in with a
+  transaction. Never recreate the view on render, and never compare against
+  `doc.toString()` (a full copy) — the wrapper tracks the last value in a ref.
+- `readOnly`, not `editable: false`, so the content stays focusable for selection,
+  copy and Cmd+F.
+- Colors are CSS custom properties in `panel.css` (`--json-*`, `--editor-*`), with a
+  dark override under `prefers-color-scheme`. `theme.ts` only references them.
+- All `@codemirror/*` packages must resolve to one copy each (`npm ls @codemirror/state`).
+  Duplicates fail silently — most visibly as highlighting that does nothing.
+- The harness tab is often **hidden** under automation, and CodeMirror measures and
+  draws on `requestAnimationFrame`, which doesn't fire in hidden tabs. A check that
+  reads the DOM after scrolling will see stale lines; take a screenshot to force a
+  paint. The harness has a ~60k-line fixture (`catalog?all=true`) for size checks.
 
 ### Layout
 
@@ -145,10 +193,10 @@ These hold regardless of what is being built:
   them directly. Regenerate from `dev/icon.svg` via `dev/icon.html` (serve the repo, then
   right-click a canvas to save over the PNG). `dev/icon-small.svg` is a separate simplified
   variant used only for 16px.
-- **Capture ids are `'c' + seq` and `clear()` resets `seq` to 0**, so ids are recycled.
-  Composer items hold ids and are not pruned on clear — this is a live data-corruption bug,
-  documented in `codebase-review.md` §1.1. Do not build anything else that keys off capture
-  id until it is fixed.
+- **`seq` and capture ids are separate counters.** `seq` numbers export files and resets
+  on `clear()`; the id counter never resets, so a cleared id is never reused
+  (`codebase-review.md` §1.1). Composer items are still not pruned on clear — they show
+  "(capture cleared)" rather than resolving to a different capture.
 - **`StrictMode` is disabled** in `src/panel.tsx`. The comment claims double-invoked effects
   would duplicate captures; that is inaccurate — the listener effect already returns a
   working `detach`. See `codebase-review.md` §1.4.
