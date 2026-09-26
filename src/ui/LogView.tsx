@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { logStore } from './logStore';
+import { logStore } from '../store/logStore';
 
 export function LogView() {
   const lines = useSyncExternalStore(logStore.subscribe, logStore.getSnapshot, logStore.getSnapshot);

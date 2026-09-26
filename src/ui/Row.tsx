@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { captureStore } from '../capture/store';
+import { captureStore } from '../store/captureStore';
 import type { CaptureMeta } from '../capture/types';
 import { formatSize } from '../engine/bytes';
 import { prettyPrint } from '../engine/json';
 import { shortUrl } from '../engine/url';
 import { downloadCapture } from './download';
-import { logStore } from './logStore';
+import { logStore } from '../store/logStore';
 
 interface RowProps {
   meta: CaptureMeta;

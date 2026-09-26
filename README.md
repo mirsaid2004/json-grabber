@@ -235,15 +235,16 @@ src/
     compose.ts        compose(), keyFromUrl(), uniqueKey() — the mesh seed
   capture/
     types.ts          Capture (the export shape) + CaptureMeta (the UI shape)
-    store.ts          in-memory store; bodies in a Map, meta snapshot for React
     listener.ts       chrome.devtools.network.onRequestFinished wrapper
+  store/
+    captureStore.ts   in-memory store; bodies in a Map, meta snapshot for React
+    logStore.ts       panel log lines
   ui/
     Panel.tsx         shell: filter, selection, composition state, listener wiring
     Captures.tsx      toolbar + capture table
     Row.tsx           one row: checkbox, drag source, expand, Save
     Composer.tsx      resizable side panel: drop target, wrapper, preview
     LogView.tsx       panel log footer
-    logStore.ts       log lines
     download.ts       Blob-anchor download helpers
     dnd.ts            drag-and-drop payload helpers
 dev/

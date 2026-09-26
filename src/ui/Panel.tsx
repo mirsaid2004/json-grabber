@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { attachNetworkListener } from '../capture/listener';
-import { captureStore } from '../capture/store';
+import { captureStore } from '../store/captureStore';
 import { keyFromUrl, type ComposeItem, type ComposeMode } from '../engine/compose';
 import { urlMatches } from '../engine/url';
 import { Captures } from './Captures';
 import { Composer } from './Composer';
 import { LogView } from './LogView';
-import { logStore } from './logStore';
+import { logStore } from '../store/logStore';
 
 export function Panel() {
   // Third arg lets the tree render outside a browser (headless smoke tests);
@@ -57,11 +57,10 @@ export function Panel() {
   const addToComposition = useCallback((ids: string[]) => {
     setComposeItems((prev) => {
       const present = new Set(prev.map((item) => item.id));
-      const meta = captureStore.getSnapshot();
       const additions = ids
         .filter((id) => !present.has(id))
         .map((id) => {
-          const entry = meta.find((m) => m.id === id);
+          const entry = captureStore.getMeta(id);
           return { id, key: entry ? keyFromUrl(entry.url) : 'response' };
         });
       if (!additions.length) return prev;
@@ -94,7 +93,6 @@ export function Panel() {
 
         {composerOpen && (
           <Composer
-            captures={captures}
             items={composeItems}
             mode={composeMode}
             width={composerWidth}

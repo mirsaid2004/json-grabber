@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import type { CaptureMeta } from '../capture/types';
-import { captureStore } from '../capture/store';
+import { captureStore } from '../store/captureStore';
 import { downloadBundle, downloadEach } from './download';
 import { setDragIds } from './dnd';
-import { logStore } from './logStore';
+import { logStore } from '../store/logStore';
 import { Row } from './Row';
 
 interface CapturesProps {
-  captures: CaptureMeta[];
+  captures: readonly CaptureMeta[];
   filter: string;
   onFilterChange(value: string): void;
   selected: Set<string>;

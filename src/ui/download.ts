@@ -1,5 +1,5 @@
 import { slugFromUrl } from '../engine/url';
-import { captureStore } from '../capture/store';
+import { captureStore } from '../store/captureStore';
 import type { CaptureMeta } from '../capture/types';
 
 /**
@@ -31,14 +31,14 @@ export function downloadCapture(meta: CaptureMeta): void {
 }
 
 /** Downloads several, staggered — Chrome drops rapid-fire programmatic clicks. */
-export function downloadEach(items: CaptureMeta[]): void {
+export function downloadEach(items: readonly CaptureMeta[]): void {
   items.forEach((meta, position) => {
     setTimeout(() => downloadCapture(meta), position * 150);
   });
 }
 
 /** One file holding an array of every capture object. */
-export function downloadBundle(items: CaptureMeta[]): void {
+export function downloadBundle(items: readonly CaptureMeta[]): void {
   const captures = items
     .map((meta) => captureStore.toCapture(meta.id))
     .filter((c): c is NonNullable<typeof c> => c !== null);

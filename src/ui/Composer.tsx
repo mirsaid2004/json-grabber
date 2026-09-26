@@ -1,17 +1,15 @@
-import { useMemo, useRef, useState } from 'react';
-import { captureStore } from '../capture/store';
-import type { CaptureMeta } from '../capture/types';
+import { useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { captureStore } from '../store/captureStore';
 import { compose, type ComposeItem, type ComposeMode } from '../engine/compose';
 import { safeParse } from '../engine/json';
 import { shortUrl } from '../engine/url';
 import { download } from './download';
 import { getDragIds, hasDragIds } from './dnd';
-import { logStore } from './logStore';
+import { logStore } from '../store/logStore';
 
 const PREVIEW_LIMIT = 200_000;
 
 interface ComposerProps {
-  captures: CaptureMeta[];
   items: ComposeItem[];
   mode: ComposeMode;
   width: number;
@@ -25,18 +23,26 @@ interface ComposerProps {
 }
 
 export function Composer(props: ComposerProps) {
-  const { captures, items, mode, width } = props;
+  const { items, mode, width } = props;
+  // Both memos read store data (meta and bodies) that is not in props, so they
+  // depend on the store's version rather than on the capture array — a number
+  // that changes exactly when the data does.
+  const version = useSyncExternalStore(
+    captureStore.subscribe,
+    captureStore.getVersion,
+    captureStore.getVersion
+  );
   const [over, setOver] = useState(false);
   const dragDepth = useRef(0);
 
   const rows = useMemo(
     () =>
       items.map((item) => {
-        const meta = captures.find((c) => c.id === item.id);
+        const meta = captureStore.getMeta(item.id);
         const body = captureStore.getBody(item.id);
         return { item, meta, parses: safeParse(body).ok };
       }),
-    [items, captures]
+    [items, version]
   );
 
   const output = useMemo(() => {
@@ -46,7 +52,7 @@ export function Composer(props: ComposerProps) {
     } catch (e) {
       return '// could not build preview: ' + (e instanceof Error ? e.message : String(e));
     }
-  }, [items, mode, captures]);
+  }, [items, mode, version]);
 
   const truncated = output.length > PREVIEW_LIMIT;
 

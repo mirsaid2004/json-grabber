@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "JSON Grabber (local dev tool)",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Captures JSON network response bodies from the DevTools network log and exports them as files. Local, unpacked, read-and-save only.",
   "icons": {
     "16": "icons/icon16.png",
