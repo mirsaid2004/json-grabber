@@ -1,7 +1,14 @@
+import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { logStore } from './store/logStore';
 import { Panel } from './ui/Panel';
 
-// No StrictMode: its double-invoked effects would attach the network listener
-// twice in development and duplicate every capture.
 const container = document.getElementById('root');
-if (container) createRoot(container).render(<Panel />);
+if (container) {
+  logStore.add('panel ready — capturing while DevTools is open on this tab');
+  createRoot(container).render(
+    <StrictMode>
+      <Panel />
+    </StrictMode>
+  );
+}

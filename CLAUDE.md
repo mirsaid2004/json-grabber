@@ -111,7 +111,10 @@ closures over local state, never `this`, because they are passed unbound to
 `LogView.tsx`) so the tree can render headlessly via `react-dom/server`. Keep passing it.
 
 `store/logStore.ts` is built the same way (`createLogStore()` + shared `logStore`) for the
-footer log. It notifies synchronously.
+footer log. It notifies synchronously and keeps the newest `DEFAULT_LOG_LIMIT` (500) lines.
+`LogView` auto-scrolls in an effect on `lines`, and only while the user is already at the
+bottom — never from a ref callback (React 19 treats a ref callback's return value as a
+cleanup function).
 
 ### Composer
 
@@ -197,9 +200,10 @@ These hold regardless of what is being built:
   on `clear()`; the id counter never resets, so a cleared id is never reused
   (`codebase-review.md` §1.1). Composer items are still not pruned on clear — they show
   "(capture cleared)" rather than resolving to a different capture.
-- **`StrictMode` is disabled** in `src/panel.tsx`. The comment claims double-invoked effects
-  would duplicate captures; that is inaccurate — the listener effect already returns a
-  working `detach`. See `codebase-review.md` §1.4.
+- **`StrictMode` is on** (`src/panel.tsx`), so in `npm run dev` / `watch` builds every
+  effect runs mount → unmount → mount. Effects must clean up after themselves, and
+  one-off side effects (like the "panel ready" log line) don't belong in effects at all —
+  they print twice. Production builds are unaffected.
 - **The URL filter does not filter the list.** It is OR'd into the capture predicate
   (`shouldKeep`): JSON mime types are always kept, and the filter *additionally* captures
   matching non-JSON URLs, for new requests only. It reads through a ref so edits apply

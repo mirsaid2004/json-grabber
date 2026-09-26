@@ -38,7 +38,6 @@ export function Panel() {
       onCapture: (capture) => captureStore.add(capture),
       onLog: (message) => logStore.add(message)
     });
-    logStore.add('panel ready — capturing while DevTools is open on this tab');
     return detach;
   }, []);
 
