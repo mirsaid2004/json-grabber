@@ -27,19 +27,30 @@ function valueOf(body: string): unknown {
 export function compose(sources: ComposeSource[], mode: ComposeMode): unknown {
   if (mode === 'array') return sources.map((source) => valueOf(source.body));
 
-  const out: Record<string, unknown> = {};
+  // Null prototype: a plain `{}` would treat a `__proto__` key as a prototype
+  // assignment and silently drop the value from the output.
+  const out: Record<string, unknown> = Object.create(null);
   for (const source of sources) {
     out[uniqueKey(out, source.key || 'response')] = valueOf(source.body);
   }
   return out;
 }
 
-/** `users`, `users_2`, `users_3`… so two drops of the same endpoint both survive. */
+/**
+ * `users`, `users_2`, `users_3`… so two drops of the same endpoint both survive.
+ * Own keys only — `in` would also see `constructor`, `toString` and the rest of
+ * Object.prototype, and rename a first `constructor` to `constructor_2`.
+ */
 export function uniqueKey(taken: Record<string, unknown>, key: string): string {
-  if (!(key in taken)) return key;
+  if (!hasOwn(taken, key)) return key;
   let n = 2;
-  while (key + '_' + n in taken) n += 1;
+  while (hasOwn(taken, key + '_' + n)) n += 1;
   return key + '_' + n;
+}
+
+// Object.hasOwn is ES2022; the project's TypeScript lib is ES2020.
+function hasOwn(obj: object, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(obj, key);
 }
 
 function isIdLike(segment: string): boolean {
