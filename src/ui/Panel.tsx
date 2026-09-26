@@ -9,8 +9,6 @@ import { LogView } from './LogView';
 import { logStore } from '../store/logStore';
 
 export function Panel() {
-  // Third arg lets the tree render outside a browser (headless smoke tests);
-  // the panel itself is client-only so it is never used at runtime.
   const captures = useSyncExternalStore(
     captureStore.subscribe,
     captureStore.getSnapshot,
@@ -22,10 +20,7 @@ export function Panel() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [composeItems, setComposeItems] = useState<ComposeItem[]>([]);
   const [composeMode, setComposeMode] = useState<ComposeMode>('object');
-  const [composerWidth, setComposerWidth] = useState(420);
 
-  // The listener lives outside React's render cycle, so it reads the filter
-  // through a ref — edits apply to new requests without re-attaching.
   const filterRef = useRef(filter);
   filterRef.current = filter;
 
@@ -94,7 +89,6 @@ export function Panel() {
           <Composer
             items={composeItems}
             mode={composeMode}
-            width={composerWidth}
             onModeChange={setComposeMode}
             onAdd={addToComposition}
             onRemove={(id) => setComposeItems((prev) => prev.filter((item) => item.id !== id))}
@@ -105,7 +99,6 @@ export function Panel() {
             }
             onClearItems={() => setComposeItems([])}
             onClose={() => setComposerOpen(false)}
-            onResize={setComposerWidth}
           />
         )}
       </div>

@@ -8,6 +8,7 @@ import { download } from './download';
 import { getDragIds, hasDragIds } from './dnd';
 import { JsonView } from './editor/JsonView';
 import { logStore } from '../store/logStore';
+import useResize from '../hooks/useResize';
 
 /**
  * The viewer renders only visible lines, so output length is not a problem —
@@ -27,26 +28,28 @@ type Preview = { kind: 'text'; text: string } | { kind: 'suppressed'; bytes: num
 interface ComposerProps {
   items: ComposeItem[];
   mode: ComposeMode;
-  width: number;
   onModeChange(mode: ComposeMode): void;
   onAdd(ids: string[]): void;
   onRemove(id: string): void;
   onKeyChange(id: string, key: string): void;
   onClearItems(): void;
   onClose(): void;
-  onResize(width: number): void;
 }
 
+const INITIAL_WIDTH = 420;
+
 export function Composer(props: ComposerProps) {
-  const { items, mode, width } = props;
-  // Both memos read store data (meta and bodies) that is not in props, so they
-  // depend on the store's version rather than on the capture array — a number
-  // that changes exactly when the data does.
+  const { items, mode } = props;
+
   const version = useSyncExternalStore(
     captureStore.subscribe,
     captureStore.getVersion,
     captureStore.getVersion
   );
+
+  const { size:{width}, startResize: startResizeColumn } = useResize({ initialWidth: INITIAL_WIDTH });
+  const { size:{height}, startResize: startResizeRow } = useResize({ initialHeight: 72, minHeight: 72 });
+
   const [over, setOver] = useState(false);
   const dragDepth = useRef(0);
 
@@ -109,27 +112,9 @@ export function Composer(props: ComposerProps) {
     );
   }
 
-  // Drag-to-resize from the panel's left edge.
-  function startResize(event: React.PointerEvent): void {
-    event.preventDefault();
-    const startX = event.clientX;
-    const startWidth = width;
-
-    function move(e: PointerEvent): void {
-      const next = startWidth + (startX - e.clientX);
-      props.onResize(Math.max(260, Math.min(next, window.innerWidth - 200)));
-    }
-    function up(): void {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-    }
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-  }
-
   return (
     <aside className="composer" style={{ width: width + 'px' }}>
-      <div className="resize-handle" onPointerDown={startResize} title="Drag to resize" />
+      <div className="resize-handle resize-handle-col" onPointerDown={startResizeColumn} title="Drag to resize" />
 
       <div className="composer-head">
         <strong className="composer-title">Composer</strong>
@@ -213,8 +198,13 @@ export function Composer(props: ComposerProps) {
           </ol>
         )}
       </div>
+        <div className="composer-wrapper" 
+          style={{ height: height + 'px' }}
+        >
 
-      <div className="composer-preview">
+          <div className="resize-handle resize-handle-row" onPointerDown={startResizeRow} title="Drag to resize" />
+      <div className="composer-preview" 
+      >
         <div className="log-header">Preview</div>
         {preview.kind === 'text' && <JsonView value={preview.text} />}
         {preview.kind === 'suppressed' && (
@@ -238,6 +228,7 @@ export function Composer(props: ComposerProps) {
           Export
         </button>
       </div>
+        </div>
     </aside>
   );
 }

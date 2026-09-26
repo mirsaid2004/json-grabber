@@ -98,11 +98,11 @@ export function Captures(props: CapturesProps) {
             </button>
           )}
           <ExportButton label={exportLabel} onExport={exportTarget} />
-          <span className="counter" title={captures.length + ' captured'}>
-            {captures.length} captured
-          </span>
         </div>
       </div>
+          <div className="counter" title={captures.length + ' captured'}>
+            {captures.length} captured
+          </div>
 
       <main>
         <table>
