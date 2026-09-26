@@ -2,6 +2,19 @@
   color-scheme: light dark;
   --border: rgba(128, 128, 128, 0.35);
   --hover: rgba(128, 128, 128, 0.12);
+  /* Opaque tints for sticky rows: the translucent tint layered over Canvas, so
+     rows scrolling underneath don't show through. */
+  --head-bg: linear-gradient(rgba(128, 128, 128, 0.2), rgba(128, 128, 128, 0.2)), Canvas;
+  --open-bg: linear-gradient(var(--hover), var(--hover)), Canvas;
+  --open-hover-bg: linear-gradient(rgba(128, 128, 128, 0.2), rgba(128, 128, 128, 0.2)), Canvas;
+  /* Height of the table header; open rows stick directly below it. */
+  --head-h: 24px;
+  /* Fixed column widths, shared by the table header and the pinned bar of an
+     open row (Row.tsx) so the two line up. The URL column takes the rest. */
+  --col-check: 28px;
+  --col-status: 70px;
+  --col-size: 90px;
+  --col-save: 62px;
 
   /* JSON viewer (src/ui/editor/theme.ts). Palette follows Chrome DevTools' own
      JSON colors so values read the same as in the Network > Preview tab. */
@@ -168,22 +181,34 @@ th, td {
 th {
   position: sticky;
   top: 0;
-  background: Canvas;
+  z-index: 3;
+  height: var(--head-h);
+  background: var(--head-bg);
+  /* A collapsed border scrolls away from a sticky cell; an inset shadow stays. */
+  border-bottom: none;
+  box-shadow: inset 0 -1px 0 var(--border);
   font-weight: 600;
 }
 
-.col-status { width: 70px; }
-.col-size { width: 90px; }
+.col-status { width: var(--col-status); }
+.col-size { width: var(--col-size); }
 
 tr.row { cursor: pointer; }
 tr.row:hover td { background: var(--hover); }
-tr.row.open td { font-weight: 600; }
-
-td.status-err { color: #c62828; }
+.status-err { color: #c62828; }
 
 tr.detail > td {
   white-space: normal;
   padding: 0;
+  /* Visible, not the inherited hidden: an overflow-hidden cell would become the
+     sticky line's scroll container and it would never stick. */
+  overflow: visible;
+}
+
+/* CodeMirror's gutter uses z-index 200; keep that inside the editor so it can't
+   paint over the sticky header and open row. */
+.json-view {
+  isolation: isolate;
 }
 
 /* The editor scrolls itself (it only renders visible lines), so it needs a
@@ -192,9 +217,50 @@ tr.detail .json-view .cm-editor {
   max-height: 420px;
 }
 
+/* An open row: the row itself (as a flex bar) plus its identity line pin under
+   the table header while the body scrolls, so you always see which capture you
+   are reading. Inside the cell on purpose: a sticky <tr> or <td> is bounded by
+   the whole table and would stay pinned over unrelated rows, while this is
+   bounded by its own cell and leaves with its body. */
+.detail-sticky {
+  position: sticky;
+  top: var(--head-h);
+  z-index: 2;
+  background: var(--open-bg);
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+
+/* The bar mirrors the table row: same cells, same classes, fixed widths from
+   the shared --col-* variables, URL flexing into the rest. */
+.row-bar {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+
+.row-bar:hover { background: var(--hover); }
+
+.row-bar > div {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-bar > .cell-url { flex: 1 1 auto; min-width: 0; }
+.row-bar > .cell-check { width: var(--col-check); }
+.row-bar > .cell-status { width: var(--col-status); }
+.row-bar > .cell-size { width: var(--col-size); }
+.row-bar > .cell-save { width: var(--col-save); }
+
 tr.detail .full-url {
-  padding: 6px 12px 0;
-  opacity: 0.75;
+  padding: 4px 12px;
+  /* Dimmed via the text color, not opacity — opacity would make the pinned
+     background translucent too, and the body would show through. */
+  color: color-mix(in srgb, CanvasText 75%, transparent);
   word-break: break-all;
 }
 
@@ -228,22 +294,25 @@ footer {
   cursor: default;
 }
 
-.col-check { width: 28px; }
-.col-save { width: 62px; }
+.col-check { width: var(--col-check); }
+.col-save { width: var(--col-save); }
 
-td.cell-check,
-td.cell-save {
+/* Cell rules apply to both a closed row's <td>s and an open row's bar <div>s. */
+.cell-check,
+.cell-save,
+.row-bar > .cell-check,
+.row-bar > .cell-save {
   padding: 2px 6px;
   overflow: visible;
 }
 
-td.cell-check input {
+.cell-check input {
   margin: 0;
   vertical-align: middle;
   cursor: pointer;
 }
 
-td.cell-save { text-align: right; }
+.cell-save { text-align: right; }
 
 button.save {
   font: inherit;
@@ -468,14 +537,22 @@ button.icon:hover { opacity: 1; }
   }
 }
 
+/* Narrow columns are collapsed to zero width rather than display:none. Hiding
+   a table cell removes its column, but an open row's cell still spans 5
+   (colSpan in Row.tsx), which brings the column back as an empty ghost track
+   and squeezes the URL column. Zero width keeps all 5 columns real. */
 @container primary (max-width: 440px) {
+  main { --col-size: 0px; }
   .col-size,
-  .cell-size { display: none; }
+  .cell-size { padding: 0; border-left: 0; border-right: 0; }
+  .row-bar > .cell-size { display: none; }
 }
 
 @container primary (max-width: 320px) {
+  main { --col-status: 0px; }
   .col-status,
-  .cell-status { display: none; }
+  .cell-status { padding: 0; border-left: 0; border-right: 0; }
+  .row-bar > .cell-status { display: none; }
   .toolbar-actions { justify-content: flex-start; }
   /* Actions are left-aligned here, so open the export menu rightwards. */
   .split-menu { left: 0; right: auto; }

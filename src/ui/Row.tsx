@@ -38,15 +38,12 @@ export const Row = memo(function Row({ meta, checked, onToggle, onDragStart }: R
     }
   }
 
-  return (
-    <>
-      <tr
-        className={'row' + (open ? ' open' : '')}
-        draggable
-        onDragStart={(e) => onDragStart(e, meta.id)}
-        onClick={() => setOpen(!open)}
-      >
-        <td className="cell-check">
+  // The row's five cells. Rendered as <td>s for a closed row, and as <div>s in
+  // the pinned bar of an open row (see below) — same content, same classes.
+  function cells(Cell: 'td' | 'div') {
+    return (
+      <>
+        <Cell className="cell-check">
           <input
             type="checkbox"
             checked={checked}
@@ -54,26 +51,53 @@ export const Row = memo(function Row({ meta, checked, onToggle, onDragStart }: R
             onClick={(e) => e.stopPropagation()}
             onChange={() => onToggle(meta.id)}
           />
-        </td>
-        <td title={meta.url}>{shortUrl(meta.url)}</td>
-        <td className={'cell-status' + (meta.status >= 400 ? ' status-err' : '')}>{meta.status}</td>
-        <td className="cell-size">{formatSize(meta.size)}</td>
-        <td className="cell-save">
+        </Cell>
+        <Cell className="cell-url" title={meta.url}>
+          {shortUrl(meta.url)}
+        </Cell>
+        <Cell className={'cell-status' + (meta.status >= 400 ? ' status-err' : '')}>{meta.status}</Cell>
+        <Cell className="cell-size">{formatSize(meta.size)}</Cell>
+        <Cell className="cell-save">
           <button type="button" className="save" title="Download just this capture" onClick={save}>
             Save
           </button>
-        </td>
+        </Cell>
+      </>
+    );
+  }
+
+  const rowEvents = {
+    draggable: true,
+    onDragStart: (e: React.DragEvent) => onDragStart(e, meta.id),
+    onClick: () => setOpen(!open)
+  };
+
+  if (!open) {
+    return (
+      <tr className="row" {...rowEvents}>
+        {cells('td')}
       </tr>
-      {open && (
-        <tr className="detail">
-          <td colSpan={5}>
-            <div className="full-url">
-              {meta.url} &middot; {meta.mimeType || 'unknown'} &middot; {meta.timestamp}
-            </div>
-            <JsonView value={body} />
-          </td>
-        </tr>
-      )}
-    </>
+    );
+  }
+
+  // Open: one full-width cell holding a copy of the row as a flex bar, then the
+  // body. Chrome bounds a sticky <tr> or <td> by the whole table, so a pinned
+  // table row would stay stuck over unrelated rows; an element inside this cell
+  // is bounded by the cell, so the bar pins while its body scrolls and leaves
+  // with it. Column widths are shared CSS variables, so the bar lines up.
+  return (
+    <tr className="detail">
+      <td colSpan={5}>
+        <div className="detail-sticky">
+          <div className="row row-bar open" {...rowEvents}>
+            {cells('div')}
+          </div>
+          <div className="full-url">
+            {meta.url} &middot; {meta.mimeType || 'unknown'} &middot; {meta.timestamp}
+          </div>
+        </div>
+        <JsonView value={body} />
+      </td>
+    </tr>
   );
 });

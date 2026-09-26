@@ -170,6 +170,24 @@ preview past `PREVIEW_MAX_INPUT` and builds the output on demand for Export / Co
 Panel width depends on the composer, not the window, so `extension/panel.css` uses
 **container queries** (`container-type: inline-size`), not media queries.
 
+**Sticky inside the table** (verified in Chrome, the hard way): a sticky `<td>` *and* a sticky
+`<tr>` are both bounded by the whole table, not their row or `<tbody>` — an open row made
+sticky stays pinned over unrelated rows until the table ends. So an **open** row renders as
+one full-width cell (`tr.detail`) containing `.detail-sticky` — a flex copy of the row
+(`.row-bar`, same cells and classes via `cells()` in `Row.tsx`) plus the identity line —
+followed by the body. That wrapper is bounded by its cell, so it pins while the body
+scrolls and leaves with it. Rules that keep this working:
+
+- Fixed column widths are shared variables (`--col-check/status/size/save`) used by both
+  the `<th>`s and the bar, so they line up. Change them there, never on one side.
+- Narrow breakpoints **collapse columns to zero width, never `display: none`**. Hiding a
+  cell removes its column, but the open row's `colSpan={5}` brings it back as an empty
+  ghost track that squeezes the URL column.
+- The detail cell is `overflow: visible`; the inherited `overflow: hidden` would make it
+  the scroll container and nothing would stick.
+- Sticky layers use opaque backgrounds (`--head-bg`, `--open-bg`), never `opacity`, and
+  `.json-view` sets `isolation: isolate` because CodeMirror's gutter uses `z-index: 200`.
+
 Gotcha documented in the README and worth repeating: `container-type` makes an element's
 width independent of its content. A button that accidentally matched the `.primary` layout
 rule collapsed to its padding — hence the deliberately distinct `.compose-btn` class.
